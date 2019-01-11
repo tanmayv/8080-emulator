@@ -32,12 +32,15 @@ import cpu.State8080;
  */
 
 public class Main {
-  public static void main(String[] args) throws IOException, URISyntaxException {
+  public static void main(String[] args) throws IOException, URISyntaxException,
+      InterruptedException {
     byte[] content = FileReader.getProgram("rom/game.rom");
     State8080 state = new State8080(content);
-
+    int counter = 0;
     while (true) {
       CPU.emulate8080Op(state);
+//      if(counter ++ > 1553)
+//      Thread.sleep(1000);
     }
 //    byte a = (byte) 0xab;
 //    byte b = (byte) ((byte) 0xcd & 0xFF);

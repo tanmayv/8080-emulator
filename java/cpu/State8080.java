@@ -2,8 +2,8 @@ package cpu;
 
 public class State8080 {
   public byte a, b, c, d, e, h, l;
-  public int sp;
-  public int pc;
+  public char sp;
+  public char pc;
   public byte[] memory;
   public ConditionCodes cc;
   public short int_enable;
@@ -16,6 +16,6 @@ public class State8080 {
       index ++;
     }
     this.cc = new ConditionCodes();
-    this.sp = 0xf000;
+    this.sp = (char) 0xf000;
   }
 }
