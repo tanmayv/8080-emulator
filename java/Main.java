@@ -39,5 +39,14 @@ public class Main {
     while (true) {
       CPU.emulate8080Op(state);
     }
+//    byte a = (byte) 0xab;
+//    byte b = (byte) ((byte) 0xcd & 0xFF);
+//
+//    int c = a << 8 ;
+//    c = c & 0xFFFF;
+//    System.out.println(String.format("%04x", c));
+//    c = c | (b & 0xFF);
+//    System.out.println(String.format("%04x", c));
   }
 }
+

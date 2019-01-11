@@ -2,15 +2,23 @@ package cpu;
 
 public class CPU {
   private static void unimplementedInstruction(State8080 state) {
-    System.err.print(String.format("Err: Unimplemented Instrunction 0x%02x", state.memory[state.pc]));
+    System.err.print(String.format("Err: Unimplemented Instrunction %04x: %02x", state.pc, state.memory[state.pc]));
     System.exit(1);
   }
 
   public static int emulate8080Op(State8080 state) {
-    short opcode = (short) state.memory[state.pc];
-    switch (opcode) {
-      case 0x00: unimplementedInstruction(state);
-      case 0x01: unimplementedInstruction(state);
+    byte opcode = state.memory[state.pc];
+    byte opcode1 = state.memory[state.pc + 1];
+    byte opcode2 = state.memory[state.pc + 2];
+    printMem(state.pc, state);
+
+    switch (opcode & 0xFF) {
+      case 0x00: break;                                 // NOP
+      case 0x01:                                        // LXI B, D16
+        state.c = opcode1;
+        state.b = opcode2;
+        state.pc += 2;
+        break;
       case 0x02: unimplementedInstruction(state);
       case 0x03: unimplementedInstruction(state);
       case 0x04: unimplementedInstruction(state);
@@ -74,9 +82,12 @@ public class CPU {
       case 0x3e: unimplementedInstruction(state);
       case 0x3f: unimplementedInstruction(state);
       case 0x40: unimplementedInstruction(state);
-      case 0x41: unimplementedInstruction(state);
-      case 0x42: unimplementedInstruction(state);
-      case 0x43: unimplementedInstruction(state);
+      case 0x41:                                        // MOV B,C
+        state.b = state.c; break;
+      case 0x42:                                        // MOV B,D
+        state.b = state.d; break;
+      case 0x43:                                        // MOV B,E
+        state.b = state.e; break;
       case 0x44: unimplementedInstruction(state);
       case 0x45: unimplementedInstruction(state);
       case 0x46: unimplementedInstruction(state);
@@ -137,13 +148,32 @@ public class CPU {
       case 0x7d: unimplementedInstruction(state);
       case 0x7e: unimplementedInstruction(state);
       case 0x7f: unimplementedInstruction(state);
-      case 0x80: unimplementedInstruction(state);
+      case 0x80:                                         // ADD B
+      {
+        short answer = (short) ((short)state.a + (short)state.b);
+        state.cc.z = (short) (((answer & 0xFF) == 0) ? 1: 0);
+        state.cc.s = (short) (((answer & 0x80) != 0) ? 1: 0);
+        state.cc.cy = (short) ((answer > 0xff) ? 1: 0);
+        state.cc.p = getParity(answer & 0xFF);
+        state.a = (byte) (answer & 0xFF);
+        break;
+      }
       case 0x81: unimplementedInstruction(state);
       case 0x82: unimplementedInstruction(state);
       case 0x83: unimplementedInstruction(state);
       case 0x84: unimplementedInstruction(state);
       case 0x85: unimplementedInstruction(state);
-      case 0x86: unimplementedInstruction(state);
+      case 0x86:                                          // ADD M
+      {
+        short offset = (short) (state.h << 8 | state.l);
+        short answer = (short) ((short)state.a + (short)state.memory[offset]);
+        state.cc.z = (short) (((answer & 0xFF) == 0) ? 1: 0);
+        state.cc.s = (short) (((answer & 0x80) != 0) ? 1: 0);
+        state.cc.cy = (short) ((answer > 0xff) ? 1: 0);
+        state.cc.p = getParity(answer & 0xFF);
+        state.a = (byte) (answer & 0xFF);
+        break;
+      }
       case 0x87: unimplementedInstruction(state);
       case 0x88: unimplementedInstruction(state);
       case 0x89: unimplementedInstruction(state);
@@ -203,11 +233,28 @@ public class CPU {
       case 0xbf: unimplementedInstruction(state);
       case 0xc0: unimplementedInstruction(state);
       case 0xc1: unimplementedInstruction(state);
-      case 0xc2: unimplementedInstruction(state);
-      case 0xc3: unimplementedInstruction(state);
+      case 0xc2:                                          // JNZ addr
+        if (state.cc.z == 0)
+          state.pc = opcode2 << 8 | opcode1;
+        else
+          state.pc += 2;
+        return 0;
+      case 0xc3:                                          // JMP addr
+        state.pc = appendAddr(opcode2, opcode1);
+        return 0;
       case 0xc4: unimplementedInstruction(state);
       case 0xc5: unimplementedInstruction(state);
-      case 0xc6: unimplementedInstruction(state);
+      case 0xc6:                                          // ADI D8
+      {
+        short answer = (short) ((short)state.a + (short)opcode1);
+        state.cc.z = (short) (((answer & 0xFF) == 0) ? 1: 0);
+        state.cc.s = (short) (((answer & 0x80) != 0) ? 1: 0);
+        state.cc.cy = (short) ((answer > 0xff) ? 1: 0);
+        state.cc.p = getParity(answer & 0xFF);
+        state.a = (byte) (answer & 0xFF);
+        //might need to increment pc
+        break;
+      }
       case 0xc7: unimplementedInstruction(state);
       case 0xc8: unimplementedInstruction(state);
       case 0xc9: unimplementedInstruction(state);
@@ -266,7 +313,30 @@ public class CPU {
       case 0xfe: unimplementedInstruction(state);
       case 0xff: unimplementedInstruction(state);
     }
+    state.pc += 1;
+
     return 0;
   }
 
+  private static byte getParity(int n)
+  {
+    boolean parity = false;
+    while(n != 0)
+    {
+      parity = !parity;
+      n = n & (n-1);
+    }
+    return (byte) (parity ? 1 : 0);
+  }
+
+  private static short appendAddr(byte msb, byte lsb) {
+    return (short) ((msb << 8) & 0xFFFF | (lsb & 0xFF));
+  }
+
+  public static void printMem(int index, State8080 state) {
+    byte opcode = state.memory[index];
+    byte opcode1 = state.memory[index + 1];
+    byte opcode2 = state.memory[index + 2];
+    System.out.println(String.format("%04x : %02x %02x %02x",index, opcode, opcode1, opcode2));
+  }
 }
