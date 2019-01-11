@@ -154,7 +154,10 @@ public class CPU {
         state.sp = appendAddr(opcode2, opcode1);
         state.pc += 2;
         break;
-      case 0x32: unimplementedInstruction(state);
+      case 0x32:                                        // STA addr
+        state.memory[appendAddr(opcode2, opcode1)] = state.a;
+        state.pc += 2;
+        break;
       case 0x33: unimplementedInstruction(state);
       case 0x34: unimplementedInstruction(state);
       case 0x35: unimplementedInstruction(state);
@@ -165,7 +168,12 @@ public class CPU {
       case 0x37: unimplementedInstruction(state);
       case 0x38: unimplementedInstruction(state);
       case 0x39: unimplementedInstruction(state);
-      case 0x3a: unimplementedInstruction(state);
+      case 0x3a:                                        // LDA addr
+      {
+        state.a = state.memory[appendAddr(opcode2, opcode1)];
+        state.pc += 2;
+        break;
+      }
       case 0x3b: unimplementedInstruction(state);
       case 0x3c: unimplementedInstruction(state);
       case 0x3d: unimplementedInstruction(state);
@@ -317,7 +325,15 @@ public class CPU {
       case 0xa4: unimplementedInstruction(state);
       case 0xa5: unimplementedInstruction(state);
       case 0xa6: unimplementedInstruction(state);
-      case 0xa7: unimplementedInstruction(state);
+      case 0xa7:                                          // ANA A
+      {
+        state.a = (byte) (state.a & state.a);
+        state.cc.cy = state.cc.ac = 0;
+        state.cc.z = (short) ((state.a == 0) ? 1 : 0);
+        state.cc.s = (short) (0x80 == (state.a & 0x80) ? 1 : 0);
+        state.cc.p = checkParity(state.a);
+        break;
+      }
       case 0xa8: unimplementedInstruction(state);
       case 0xa9: unimplementedInstruction(state);
       case 0xaa: unimplementedInstruction(state);
@@ -325,7 +341,15 @@ public class CPU {
       case 0xac: unimplementedInstruction(state);
       case 0xad: unimplementedInstruction(state);
       case 0xae: unimplementedInstruction(state);
-      case 0xaf: unimplementedInstruction(state);
+      case 0xaf:                                          // XRA A
+      {
+        state.a = (byte) (state.a ^ state.a);
+        state.cc.cy = state.cc.ac = 0;
+        state.cc.z = (short) ((state.a == 0) ? 1 : 0);
+        state.cc.s = (short) (0x80 == (state.a & 0x80) ? 1 : 0);
+        state.cc.p = checkParity(state.a);
+        break;
+      }
       case 0xb0: unimplementedInstruction(state);
       case 0xb1: unimplementedInstruction(state);
       case 0xb2: unimplementedInstruction(state);
@@ -498,7 +522,9 @@ public class CPU {
       case 0xf8: unimplementedInstruction(state);
       case 0xf9: unimplementedInstruction(state);
       case 0xfa: unimplementedInstruction(state);
-      case 0xfb: unimplementedInstruction(state);
+      case 0xfb:                                       // EI
+        state.int_enable = 1;
+        break;
       case 0xfc: unimplementedInstruction(state);
       case 0xfd: unimplementedInstruction(state);
       case 0xfe:                                       // CPI D8
