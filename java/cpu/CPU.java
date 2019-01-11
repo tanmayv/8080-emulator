@@ -39,16 +39,40 @@ public class CPU {
         break;
       case 0x07: unimplementedInstruction(state);
       case 0x08: unimplementedInstruction(state);
-      case 0x09: unimplementedInstruction(state);
+      case 0x09:                                        // DAD B
+      {
+        int hl = appendAddr(state.h, state.l);
+        int bc = appendAddr(state.b, state.c);
+        int res = hl + bc;
+        state.h = (byte) ((res & 0xFF00) >> 8);
+        state.l = (byte) (res & 0xFF);
+        state.cc.cy = (short) ((res & 0xFFFF0000) != 0 ? 1 : 0);
+        break;
+      }
       case 0x0a: unimplementedInstruction(state);
       case 0x0b: unimplementedInstruction(state);
       case 0x0c: unimplementedInstruction(state);
-      case 0x0d: unimplementedInstruction(state);
+      case 0x0d:                                        // DCR C
+      {
+        short answer = (short) (state.c - 1);
+        state.cc.z = checkZ(answer);
+        state.cc.s = checkS(answer);
+        state.cc.cy = checkCY(answer);
+        state.cc.p = checkParity(answer);
+        state.c = (byte) (answer & 0xFF);
+        break;
+      }
       case 0x0e:                                        // MVI C, D8
         state.c = opcode1;
         state.pc++;
         break;
-      case 0x0f: unimplementedInstruction(state);
+      case 0x0f:                                        // RRC
+      {
+        byte x = state.a;
+        state.a = (byte) (((x & 1) << 7) | (x >> 1));
+        state.cc.cy = (short) (1 == (x&1) ? 1 : 0);
+        break;
+      }
       case 0x10: unimplementedInstruction(state);
       case 0x11:                                        // LXI D, D16
         state.d = opcode2;
@@ -57,17 +81,28 @@ public class CPU {
         break;
       case 0x12: unimplementedInstruction(state);
       case 0x13:                                        // INX D
+      {
         char de = appendAddr(state.d, state.e);
         de++;
         state.d = (byte) (de >> 8 & 0xFF);
         state.e = (byte) (de & 0xFF);
         break;
+      }
       case 0x14: unimplementedInstruction(state);
       case 0x15: unimplementedInstruction(state);
       case 0x16: unimplementedInstruction(state);
       case 0x17: unimplementedInstruction(state);
       case 0x18: unimplementedInstruction(state);
-      case 0x19: unimplementedInstruction(state);
+      case 0x19:                                        // DAD D
+      {
+        int hl = appendAddr(state.h, state.l);
+        int de = appendAddr(state.d, state.e);
+        int res = hl + de;
+        state.h = (byte) ((res & 0xFF00) >> 8);
+        state.l = (byte) (res & 0xFF);
+        state.cc.cy = (short) ((res & 0xFFFF0000) != 0 ? 1 : 0);
+        break;
+      }
       case 0x1a:                                         // LDAX D
         state.a = state.memory[(int)appendAddr(state.d, state.e)];
         break;
@@ -84,17 +119,30 @@ public class CPU {
         break;
       case 0x22: unimplementedInstruction(state);
       case 0x23:                                        // INX H
+      {
         char hl = appendAddr(state.h, state.l);
         hl++;
         state.h = (byte) (hl >> 8 & 0xFF);
         state.l = (byte) (hl & 0xFF);
         break;
+      }
       case 0x24: unimplementedInstruction(state);
       case 0x25: unimplementedInstruction(state);
-      case 0x26: unimplementedInstruction(state);
+      case 0x26:                                        // MOV H, D8
+        state.h = opcode1;
+        state.pc++;
+        break;
       case 0x27: unimplementedInstruction(state);
       case 0x28: unimplementedInstruction(state);
-      case 0x29: unimplementedInstruction(state);
+      case 0x29:                                        // DAD H
+      {
+        int hl = appendAddr(state.h, state.l);
+        int res = hl + hl;
+        state.h = (byte) ((res & 0xFF00) >> 8);
+        state.l = (byte) (res & 0xFF);
+        state.cc.cy = (short) ((res & 0xFFFF0000) != 0 ? 1 : 0);
+        break;
+      }
       case 0x2a: unimplementedInstruction(state);
       case 0x2b: unimplementedInstruction(state);
       case 0x2c: unimplementedInstruction(state);
@@ -121,7 +169,10 @@ public class CPU {
       case 0x3b: unimplementedInstruction(state);
       case 0x3c: unimplementedInstruction(state);
       case 0x3d: unimplementedInstruction(state);
-      case 0x3e: unimplementedInstruction(state);
+      case 0x3e:                                        // MVI A,D8
+        state.a = opcode1;
+        state.pc ++;
+        break;
       case 0x3f: unimplementedInstruction(state);
       case 0x40: unimplementedInstruction(state);
       case 0x41:                                        // MOV B,C
@@ -148,7 +199,9 @@ public class CPU {
       case 0x53: unimplementedInstruction(state);
       case 0x54: unimplementedInstruction(state);
       case 0x55: unimplementedInstruction(state);
-      case 0x56: unimplementedInstruction(state);
+      case 0x56:                                        // MOV D,M
+        state.d = state.memory[appendAddr(state.h, state.l)];
+        break;
       case 0x57: unimplementedInstruction(state);
       case 0x58: unimplementedInstruction(state);
       case 0x59: unimplementedInstruction(state);
@@ -156,7 +209,9 @@ public class CPU {
       case 0x5b: unimplementedInstruction(state);
       case 0x5c: unimplementedInstruction(state);
       case 0x5d: unimplementedInstruction(state);
-      case 0x5e: unimplementedInstruction(state);
+      case 0x5e:                                        // MOV E,M
+        state.e = state.memory[appendAddr(state.h, state.l)];
+        break;
       case 0x5f: unimplementedInstruction(state);
       case 0x60: unimplementedInstruction(state);
       case 0x61: unimplementedInstruction(state);
@@ -164,7 +219,9 @@ public class CPU {
       case 0x63: unimplementedInstruction(state);
       case 0x64: unimplementedInstruction(state);
       case 0x65: unimplementedInstruction(state);
-      case 0x66: unimplementedInstruction(state);
+      case 0x66:                                        // MOV H,M
+        state.h = state.memory[appendAddr(state.h, state.l)];
+        break;
       case 0x67: unimplementedInstruction(state);
       case 0x68: unimplementedInstruction(state);
       case 0x69: unimplementedInstruction(state);
@@ -173,7 +230,9 @@ public class CPU {
       case 0x6c: unimplementedInstruction(state);
       case 0x6d: unimplementedInstruction(state);
       case 0x6e: unimplementedInstruction(state);
-      case 0x6f: unimplementedInstruction(state);
+      case 0x6f:                                         // MOV L,A
+        state.l = state.a;
+        break;
       case 0x70: unimplementedInstruction(state);
       case 0x71: unimplementedInstruction(state);
       case 0x72: unimplementedInstruction(state);
@@ -186,13 +245,19 @@ public class CPU {
         break;
       case 0x78: unimplementedInstruction(state);
       case 0x79: unimplementedInstruction(state);
-      case 0x7a: unimplementedInstruction(state);
-      case 0x7b: unimplementedInstruction(state);
+      case 0x7a:                                         // MOV A,D
+        state.a = state.d;
+        break;
+      case 0x7b:                                         // MOV A,E
+        state.a = state.e;
+        break;
       case 0x7c:                                         // MOV A,H
         state.a = state.h;
         break;
       case 0x7d: unimplementedInstruction(state);
-      case 0x7e: unimplementedInstruction(state);
+      case 0x7e:                                         // MOV A,M
+        state.a = state.memory[appendAddr(state.h, state.l)];
+        break;
       case 0x7f: unimplementedInstruction(state);
       case 0x80:                                         // ADD B
       {
@@ -278,7 +343,11 @@ public class CPU {
       case 0xbe: unimplementedInstruction(state);
       case 0xbf: unimplementedInstruction(state);
       case 0xc0: unimplementedInstruction(state);
-      case 0xc1: unimplementedInstruction(state);
+      case 0xc1:                                          // POP B
+        state.c = state.memory[state.sp];
+        state.b = state.memory[state.sp+1];
+        state.sp += 2;
+        break;
       case 0xc2:                                          // JNZ addr
         if (state.cc.z == 0){
           state.pc = appendAddr(opcode2, opcode1);
@@ -291,7 +360,11 @@ public class CPU {
         state.pc = appendAddr(opcode2, opcode1);
         return 0;
       case 0xc4: unimplementedInstruction(state);
-      case 0xc5: unimplementedInstruction(state);
+      case 0xc5:                                          // PUSH B
+        state.memory[state.sp - 2] = state.c;
+        state.memory[state.sp - 1] = state.b;
+        state.sp -= 2;
+        break;
       case 0xc6:                                          // ADI D8
       {
         short answer = (short) ((short)state.a + (short)opcode1);
@@ -322,9 +395,16 @@ public class CPU {
       case 0xce: unimplementedInstruction(state);
       case 0xcf: unimplementedInstruction(state);
       case 0xd0: unimplementedInstruction(state);
-      case 0xd1: unimplementedInstruction(state);
+      case 0xd1:                                          // POP D
+        state.e = state.memory[state.sp];
+        state.d = state.memory[state.sp+1];
+        state.sp += 2;
+        break;
       case 0xd2: unimplementedInstruction(state);
-      case 0xd3: unimplementedInstruction(state);
+      case 0xd3:                                          // OUT D8
+        //TODO
+        state.pc ++;
+        break;
       case 0xd4: unimplementedInstruction(state);
       case 0xd5:                                          // PUSH D
         state.memory[state.sp - 2] = state.e;
@@ -342,7 +422,13 @@ public class CPU {
       case 0xde: unimplementedInstruction(state);
       case 0xdf: unimplementedInstruction(state);
       case 0xe0: unimplementedInstruction(state);
-      case 0xe1: unimplementedInstruction(state);
+      case 0xe1:                                        // POP H
+      {
+        state.l = state.memory[state.sp];
+        state.h = state.memory[state.sp+1];
+        state.sp += 2;
+        break;
+      }
       case 0xe2: unimplementedInstruction(state);
       case 0xe3: unimplementedInstruction(state);
       case 0xe4: unimplementedInstruction(state);
@@ -351,22 +437,62 @@ public class CPU {
         state.memory[state.sp - 1] = state.h;
         state.sp -= 2;
         break;
-      case 0xe6: unimplementedInstruction(state);
+      case 0xe6:                                        // ANI D8
+      {
+        state.a = (byte) (state.a & opcode1);
+        state.cc.cy = state.cc.ac = 0;
+        state.cc.z = (short) ((state.a == 0) ? 1 : 0);
+        state.cc.s = (short) (0x80 == (state.a & 0x80) ? 1 : 0);
+        state.cc.p = checkParity(state.a);
+        state.pc++;
+        break;
+      }
       case 0xe7: unimplementedInstruction(state);
       case 0xe8: unimplementedInstruction(state);
       case 0xe9: unimplementedInstruction(state);
       case 0xea: unimplementedInstruction(state);
-      case 0xeb: unimplementedInstruction(state);
+      case 0xeb:                                        // XCHG
+      {
+        byte temp1 = state.d;
+        byte temp2 = state.e;
+        state.d = state.h;
+        state.e = state.l;
+        state.h = temp1;
+        state.l = temp2;
+        break;
+      }
       case 0xec: unimplementedInstruction(state);
       case 0xed: unimplementedInstruction(state);
       case 0xee: unimplementedInstruction(state);
       case 0xef: unimplementedInstruction(state);
       case 0xf0: unimplementedInstruction(state);
-      case 0xf1: unimplementedInstruction(state);
+      case 0xf1:                                        // POP PSW
+      {
+        state.a = state.memory[state.sp + 1];
+        byte psw = state.memory[state.sp];
+        state.cc.z = (short) (0x01 == (psw & 0x01) ? 1 : 0);
+        state.cc.s = (short) (0x01 == (psw & 0x02) ? 1 : 0);
+        state.cc.p = (short) (0x01 == (psw & 0x04) ? 1 : 0);
+        state.cc.cy = (short) (0x01 == (psw & 0x08) ? 1 : 0);
+        state.cc.ac = (short) (0x01 == (psw & 0x10) ? 1 : 0);
+        state.sp += 2;
+        break;
+      }
       case 0xf2: unimplementedInstruction(state);
       case 0xf3: unimplementedInstruction(state);
       case 0xf4: unimplementedInstruction(state);
-      case 0xf5: unimplementedInstruction(state);
+      case 0xf5:                                        // PUSH PSW
+      {
+        state.memory[state.sp-1] = state.a;
+        byte psw = (byte) (state.cc.z |
+            state.cc.s << 1 |
+            state.cc.p << 2 |
+            state.cc.cy << 3 |
+            state.cc.ac << 4);
+        state.memory[state.sp-2] = psw;
+        state.sp -= 2;
+        break;
+      }
       case 0xf6: unimplementedInstruction(state);
       case 0xf7: unimplementedInstruction(state);
       case 0xf8: unimplementedInstruction(state);
