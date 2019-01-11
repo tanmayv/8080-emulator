@@ -88,7 +88,16 @@ public class CPU {
         state.e = (byte) (de & 0xFF);
         break;
       }
-      case 0x14: unimplementedInstruction(state);
+      case 0x14:                                        // INR D
+      {
+        short answer = (short) (state.d + 1);
+        state.cc.z = checkZ(answer);
+        state.cc.s = checkS(answer);
+        state.cc.cy = checkCY(answer);
+        state.cc.p = checkParity(answer);
+        state.d = (byte) (answer & 0xFF);
+        break;
+      }
       case 0x15: unimplementedInstruction(state);
       case 0x16: unimplementedInstruction(state);
       case 0x17: unimplementedInstruction(state);
@@ -167,7 +176,15 @@ public class CPU {
         break;
       case 0x37: unimplementedInstruction(state);
       case 0x38: unimplementedInstruction(state);
-      case 0x39: unimplementedInstruction(state);
+      case 0x39:                                        // DAD SP
+      {
+        int hl = appendAddr(state.h, state.l);
+        int res = hl + state.sp;
+        state.h = (byte) ((res & 0xFF00) >> 8);
+        state.l = (byte) (res & 0xFF);
+        state.cc.cy = (short) ((res & 0xFFFF0000) != 0 ? 1 : 0);
+        break;
+      }
       case 0x3a:                                        // LDA addr
       {
         state.a = state.memory[appendAddr(opcode2, opcode1)];
@@ -410,26 +427,50 @@ public class CPU {
       case 0xcb: unimplementedInstruction(state);
       case 0xcc: unimplementedInstruction(state);
       case 0xcd:                                          // CALL adr
+      {
         int ret = (state.pc + 2);
         state.memory[state.sp - 1] = (byte) ((ret >> 8) & 0xFF); // sp-1 = pc.hi
         state.memory[state.sp - 2] = (byte) ((ret) & 0xFF);      // sp-2 = pc.lo
         state.sp = (char) (state.sp - 2);
         state.pc = appendAddr(opcode2, opcode1);
         return 0;
+      }
       case 0xce: unimplementedInstruction(state);
       case 0xcf: unimplementedInstruction(state);
-      case 0xd0: unimplementedInstruction(state);
+      case 0xd0:                                          // RNC
+        if(state.cc.cy == 0) {
+          state.pc = (char) (state.memory[state.sp] | (state.memory[state.sp + 1] << 8));
+          state.sp += 2;
+        }
+        break;
       case 0xd1:                                          // POP D
         state.e = state.memory[state.sp];
         state.d = state.memory[state.sp+1];
         state.sp += 2;
         break;
-      case 0xd2: unimplementedInstruction(state);
+      case 0xd2:                                          // JNC
+        if(state.cc.cy == 0) {
+          state.pc = (char) appendAddr(opcode2, opcode1);
+          return 0;
+        } else {
+          state.sp += 2;
+          break;
+        }
       case 0xd3:                                          // OUT D8
         //TODO
         state.pc ++;
         break;
-      case 0xd4: unimplementedInstruction(state);
+      case 0xd4:                                          // CNC adr
+        if(state.cc.cy == 0) {
+          int ret = state.pc + 2;
+          state.memory[state.sp - 1] = (byte) ((ret >> 8) & 0xFF);
+          state.memory[state.sp - 2] = (byte) (ret & 0xFF);
+          state.sp -= 2;
+          state.pc = appendAddr(opcode2, opcode1);
+        } else {
+          state.pc += 2;
+        }
+        break;
       case 0xd5:                                          // PUSH D
         state.memory[state.sp - 2] = state.e;
         state.memory[state.sp - 1] = state.d;
@@ -571,6 +612,12 @@ public class CPU {
     return (char) ((msb << 8) & 0xFFFF | (lsb & 0xFF));
   }
 
+  private static void push(State8080 state, byte high, byte low) {
+    state.memory[state.sp - 1] = high;
+    state.memory[state.sp - 2] = low;
+    state.sp -= 2;
+  }
+
   private static short checkS(short answer) {
     return (short) (((answer & 0x80) != 0) ? 1: 0);
   }
@@ -581,6 +628,12 @@ public class CPU {
 
   private static short checkCY(short answer) {
     return (short) ((answer > 0xff) ? 1: 0);
+  }
+
+  public static void generateInterrupt(State8080 state, int interrupt_num) {
+//    push(state, (byte)((state.pc & 0xFF00) >> 8), (byte)(state.pc & 0xFF));
+//    System.out.println("========================");
+//    state.pc = (char) (8*interrupt_num);
   }
 
   public static void printMem(int index, State8080 state) {

@@ -32,24 +32,68 @@ import cpu.State8080;
  */
 
 public class Main {
+  static char shift0, shift1, shiftOffset;
+  static long lastInterrupt;
+
   public static void main(String[] args) throws IOException, URISyntaxException,
       InterruptedException {
     byte[] content = FileReader.getProgram("rom/game.rom");
     State8080 state = new State8080(content);
     int counter = 0;
     while (true) {
-      CPU.emulate8080Op(state);
+      byte opcode = state.memory[state.pc];
+      switch (opcode & 0xFF) {
+        case 0xDB:{
+          byte port = state.memory[state.pc + 1];
+          state.a = machineIn(state, port);
+          state.pc++;
+          break;
+        }
+        case 0xD3: {
+          byte port = state.memory[state.pc + 1];
+          machineOut(port, state.a);
+          state.pc++;
+          break;
+        }
+        default:
+          CPU.emulate8080Op(state);
+      }
+      long currentTime = System.currentTimeMillis();
+      if( currentTime - lastInterrupt > (1/60) * 1000) {
+        if(state.int_enable == 1) {
+          CPU.generateInterrupt(state, 2);
+          lastInterrupt = currentTime;
+        }
+      }
 //      if(counter ++ > 1553)
 //      Thread.sleep(1000);
     }
-//    byte a = (byte) 0xab;
-//    byte b = (byte) ((byte) 0xcd & 0xFF);
-//
-//    int c = a << 8 ;
-//    c = c & 0xFFFF;
-//    System.out.println(String.format("%04x", c));
-//    c = c | (b & 0xFF);
-//    System.out.println(String.format("%04x", c));
   }
+
+  public static byte machineIn(State8080 state, byte port) {
+    byte a = 0x00;
+    switch (port & 0xFF) {
+      case 3:
+      {
+        char v = (char) ((shift1 << 8) | shift0);
+        a = (byte) ((v >> (8-shiftOffset)) & 0xFF);
+      }
+      break;
+    }
+    return a;
+  }
+
+  public static void machineOut(byte port, byte value) {
+    switch (port & 0xFF) {
+      case 2:
+        shiftOffset = (char) (value & 0x7);
+        break;
+      case 4:
+        shift0 = shift1;
+        shift1 = (char) value;
+        break;
+    }
+  }
+
 }
 

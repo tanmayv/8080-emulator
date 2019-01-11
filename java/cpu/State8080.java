@@ -9,7 +9,7 @@ public class State8080 {
   public short int_enable;
 
   public State8080(byte[] memory) {
-    this.memory = new byte[8000*8];
+    this.memory = new byte[8000*16];
     int index = 0;
     for(byte b: memory) {
       this.memory[index] = memory[index];
